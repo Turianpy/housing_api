@@ -3,11 +3,11 @@ name: housing_api workflow
 on:
     pull_request:
         branches:
-            - master
+            - main
             - dev
     push:
         branches:
-            - master
+            - main
             - dev
         paths-ignore:
             - 'README.md'
