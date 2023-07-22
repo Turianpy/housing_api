@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from .validators import validate_username
@@ -17,6 +18,17 @@ class SignUpSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('email', 'username', 'password')
+
+
+class ConfirmEmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254, required=True)
+    code = serializers.CharField(max_length=20, required=True)
+
+    def validate(self, attrs):
+        user = get_object_or_404(User, email=attrs['email'])
+        if user.code.code == attrs['code']:
+            return super().validate(attrs)
+        raise serializers.ValidationError('Invalid code')
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

@@ -24,11 +24,16 @@ class User(AbstractUser):
         blank=False,
         max_length=254,
     )
+
+    email_verified = models.BooleanField(default=False)
     # ADD PHONE NUMBER VALIDATION LATER !!!!!!!!!!!!!!!!
     phone_number = models.CharField(
         validators=[],
         max_length=20,
     )
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
 
     @property
     def is_admin(self):
@@ -54,7 +59,7 @@ class User(AbstractUser):
 
 class ConfCode(models.Model):
     code = models.CharField(max_length=20)
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         User, on_delete=models.CASCADE, related_name='code'
     )
     created = models.DateTimeField(auto_now_add=True)

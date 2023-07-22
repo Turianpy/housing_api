@@ -7,7 +7,7 @@ from rest_framework.viewsets import ModelViewSet
 from users.models import User
 
 from .permissions import IsAdmin, IsModerator
-from .serializers import SignUpSerializer, UserCreateSerializer, UserSerializer
+from .serializers import SignUpSerializer, UserCreateSerializer, UserSerializer, ConfirmEmailSerializer
 from .tasks import send_confirmation_code_task
 from .utils import generate_conf_code
 from .validators import validate_email_and_username_exist
@@ -34,6 +34,20 @@ def singup(request):
     conf_code = generate_conf_code(user)
     send_confirmation_code_task(username=username, email=email, code=conf_code)
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def verify_email(request):
+    serializer = ConfirmEmailSerializer(data=request.data)
+    serializer.is_valid()
+    user = User.objects.get(email=serializer.validated_data['email'])
+    if user.email_verified:
+        return Response(
+            {'error': 'Email is already verified'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserViewSet(ModelViewSet):

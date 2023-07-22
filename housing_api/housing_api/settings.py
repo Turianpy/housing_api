@@ -136,6 +136,9 @@ DJOSER = {
     'USERNAME_RESET_CONFIRM_URL': 'email/reset/confirm/{uid}/{token}',
     'ACTIVATION_URL': 'activate/{uid}/{token}',
     'SEND_ACTIVATION_EMAIL': True,
+    'PERMISSIONS': {
+        "token_create": ["api.permissions.EmailVerified"],
+    }
 }
 
 AUTH_USER_MODEL = 'users.User'
