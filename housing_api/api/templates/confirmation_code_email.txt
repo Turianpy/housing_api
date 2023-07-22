@@ -1,0 +1,6 @@
+Hello {{ name|safe }}!
+
+Your kekhosuing confirmation code:
+{{ conf_code.code|safe }}
+
+Happy searching!

@@ -50,3 +50,11 @@ class User(AbstractUser):
         ordering = ('username',)
         verbose_name = 'user'
         verbose_name_plural = 'users'
+
+
+class ConfCode(models.Model):
+    code = models.CharField(max_length=20)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='code'
+    )
+    created = models.DateTimeField(auto_now_add=True)

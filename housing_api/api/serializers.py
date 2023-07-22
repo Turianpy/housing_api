@@ -1,7 +1,22 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from .validators import validate_username
+
 User = get_user_model()
+
+
+class SignUpSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(max_length=254, required=True)
+    username = serializers.CharField(
+        max_length=30,
+        required=True,
+        validators=[validate_username]
+    )
+
+    class Meta:
+        model = User
+        fields = ('email', 'username', 'password')
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -15,8 +30,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'phone_number',
         )
         model = User
-        read_only_fields = ('role',)
-        extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
         pw = validated_data.pop('password')

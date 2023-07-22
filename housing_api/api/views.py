@@ -1,13 +1,39 @@
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from rest_framework import status
-from rest_framework.decorators import action
+from rest_framework import permissions, status
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from users.models import User
 
 from .permissions import IsAdmin, IsModerator
-from .serializers import UserCreateSerializer, UserSerializer
+from .serializers import SignUpSerializer, UserCreateSerializer, UserSerializer
+from .tasks import send_confirmation_code_task
+from .utils import generate_conf_code
+from .validators import validate_email_and_username_exist
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def singup(request):
+    serializer = SignUpSerializer(data=request.data)
+    serializer.is_valid()
+    email, username, password = serializer.validated_data.values()
+    if not User.objects.filter(email=email, username=username).exists():
+        validate_email_and_username_exist(
+            email=email,
+            username=username
+        )
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+        )
+        user.set_password(password)
+        user.save()
+    user = User.objects.get(username=username)
+    conf_code = generate_conf_code(user)
+    send_confirmation_code_task(username=username, email=email, code=conf_code)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class UserViewSet(ModelViewSet):

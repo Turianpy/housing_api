@@ -139,3 +139,9 @@ DJOSER = {
 }
 
 AUTH_USER_MODEL = 'users.User'
+
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+
+DEFAULT_FROM_EMAIL = 'kekhousing <admin@kekhosuing.com>'
+
+EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
