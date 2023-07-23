@@ -1,37 +1,42 @@
-import secrets
+from datetime import datetime, timedelta
 
+import jwt
 from django.conf import settings
 from django.core.mail import EmailMessage
 from django.template.loader import render_to_string
 from rest_framework_simplejwt.tokens import RefreshToken
-from users.models import ConfCode
 
 
-def send_confirmation_code(username, email, code):
+def send_activation_email(username, email, token):
+
+    activation_link = "http://localhost/api/auth/activate/?token=" + token
 
     context = {
-        'name': username,
-        'email': email,
-        'conf_code': code,
+        "name": username,
+        "email": email,
+        "activation_link": activation_link
     }
 
-    email_subject = 'Your konutbul confirmation code'
+    email_subject = 'Your website_name activation link'
     email_body = render_to_string(
-        'confirmation_code_email.txt',
+        'activation_link_email.txt',
         context=context
     )
 
     email = EmailMessage(
-        email_subject, email_body,
+        email_subject,
+        email_body,
         settings.DEFAULT_FROM_EMAIL, [email, ],
     )
     return email.send(fail_silently=False)
 
 
-def generate_conf_code(user):
-    return ConfCode.objects.create(
-        code=secrets.token_hex(3).upper(), user=user
-    )
+def generate_activation_token(user):
+    payload = {
+        'email': user.email,
+        'exp': datetime.utcnow() + timedelta(minutes=60),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
 
 
 def get_tokens(user):

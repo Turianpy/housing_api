@@ -1,5 +1,4 @@
 from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 
 from .validators import validate_username
@@ -20,15 +19,27 @@ class SignUpSerializer(serializers.ModelSerializer):
         fields = ('email', 'username', 'password')
 
 
-class ConfirmEmailSerializer(serializers.Serializer):
+class GetTokenSerializer(serializers.Serializer):
+
     email = serializers.EmailField(max_length=254, required=True)
-    code = serializers.CharField(max_length=20, required=True)
+    password = serializers.CharField(required=True)
 
     def validate(self, attrs):
-        user = get_object_or_404(User, email=attrs['email'])
-        if user.code.code == attrs['code']:
-            return super().validate(attrs)
-        raise serializers.ValidationError('Invalid code')
+        try:
+            user = User.objects.get(email=attrs['email'])
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                'Invalid credentials'
+            )
+        if not user.check_password(attrs['password']):
+            raise serializers.ValidationError(
+                'Invalid credentials'
+            )
+        if not user.is_active:
+            raise serializers.ValidationError(
+                'Account is not active'
+            )
+        return attrs
 
 
 class UserCreateSerializer(serializers.ModelSerializer):

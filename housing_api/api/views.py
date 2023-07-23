@@ -1,5 +1,8 @@
+import jwt
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -7,9 +10,10 @@ from rest_framework.viewsets import ModelViewSet
 from users.models import User
 
 from .permissions import IsAdmin, IsModerator
-from .serializers import SignUpSerializer, UserCreateSerializer, UserSerializer, ConfirmEmailSerializer
-from .tasks import send_confirmation_code_task
-from .utils import generate_conf_code
+from .serializers import (GetTokenSerializer, SignUpSerializer,
+                          UserCreateSerializer, UserSerializer)
+from .tasks import send_activation_email_task
+from .utils import generate_activation_token, get_tokens
 from .validators import validate_email_and_username_exist
 
 
@@ -19,35 +23,70 @@ def singup(request):
     serializer = SignUpSerializer(data=request.data)
     serializer.is_valid()
     email, username, password = serializer.validated_data.values()
-    if not User.objects.filter(email=email, username=username).exists():
-        validate_email_and_username_exist(
-            email=email,
-            username=username
-        )
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-        )
-        user.set_password(password)
-        user.save()
-    user = User.objects.get(username=username)
-    conf_code = generate_conf_code(user)
-    send_confirmation_code_task(username=username, email=email, code=conf_code)
+    validate_email_and_username_exist(
+        email=email,
+        username=username
+    )
+    user = User.objects.create_user(
+        username=username,
+        email=email,
+        is_active=False
+    )
+    user.set_password(password)
+    user.save()
+    send_activation_email_task(
+        username, email, generate_activation_token(user)
+    )
     return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([permissions.AllowAny])
+def activate(request):
+    token = request.query_params.get('token')
+    if not token:
+        return Response(
+            {'error': 'Token not provided'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        user = User.objects.get(email=payload['email'])
+        if user.is_active:
+            return Response(
+                {"message": "User already activated"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user.is_active = True
+        user.save()
+        return Response(
+            {"message": "Account successfully activated"},
+            status=status.HTTP_200_OK
+        )
+    except jwt.ExpiredSignatureError:
+        return Response(
+            {'error': 'Activation link has expired'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except jwt.DecodeError:
+        return Response(
+            {'error': 'Invalid token'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'User with given email not found'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
 
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
-def verify_email(request):
-    serializer = ConfirmEmailSerializer(data=request.data)
-    serializer.is_valid()
-    user = User.objects.get(email=serializer.validated_data['email'])
-    if user.email_verified:
-        return Response(
-            {'error': 'Email is already verified'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    return Response(status=status.HTTP_400_BAD_REQUEST)
+def get_token(request):
+    serializer = GetTokenSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = get_object_or_404(User, email=serializer.validated_data['email'])
+    return Response(get_tokens(user), status=status.HTTP_200_OK)
 
 
 class UserViewSet(ModelViewSet):
