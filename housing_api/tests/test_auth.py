@@ -1,7 +1,8 @@
 import pytest
-from django.core import mail
-from .fixtures.user_fixtures import *  # noqa
 from api.utils import generate_activation_token
+from django.core import mail
+
+from .fixtures.user_fixtures import *  # noqa
 
 
 @pytest.mark.django_db(transaction=True)
@@ -45,7 +46,10 @@ class TestAuth:
         }
         response = client.post(self.signup_url, data=data)
         assert response.status_code == 400
-        assert response.data['password'][0] == 'This password is too short. It must contain at least 8 characters.'
+        assert response.data['password'][0] == (
+            'This password is too short. '
+            'It must contain at least 8 characters.'
+            )
         assert len(mail.outbox) == outbox_before
 
     def test_signup_with_invalid_username(self, client):
