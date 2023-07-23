@@ -1,7 +1,10 @@
-import pytest
 import json
+
+import pytest
 from django.core import mail
+
 from api.utils import generate_user_token
+
 from .fixtures.user_fixtures import *  # noqa
 
 

@@ -7,6 +7,7 @@ from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+
 from users.models import User
 
 from .permissions import IsAdmin, IsModerator
@@ -138,10 +139,10 @@ class UserViewSet(ModelViewSet):
         return Response(self.get_serializer_class()(request.user).data)
 
     @action(
-            detail=False,
-            methods=['patch', 'post'],
-            permission_classes=[permissions.AllowAny]
-        )
+        detail=False,
+        methods=['patch', 'post'],
+        permission_classes=[permissions.AllowAny]
+    )
     def reset_password(self, request):
         if request.method == 'POST':
             email = request.data['email']
