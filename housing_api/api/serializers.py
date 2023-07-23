@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from .validators import validate_username
@@ -12,6 +13,10 @@ class SignUpSerializer(serializers.ModelSerializer):
         max_length=30,
         required=True,
         validators=[validate_username]
+    )
+    password = serializers.CharField(
+        required=True,
+        validators=[validate_password]
     )
 
     class Meta:

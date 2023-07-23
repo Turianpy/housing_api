@@ -1,5 +1,6 @@
 import factory
 from faker import Faker
+
 from users.models import User
 
 fake = Faker()

@@ -7,6 +7,7 @@ from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+
 from users.models import User
 
 from .permissions import IsAdmin, IsModerator
@@ -21,7 +22,7 @@ from .validators import validate_email_and_username_exist
 @permission_classes([permissions.AllowAny])
 def singup(request):
     serializer = SignUpSerializer(data=request.data)
-    serializer.is_valid()
+    serializer.is_valid(raise_exception=True)
     email, username, password = serializer.validated_data.values()
     validate_email_and_username_exist(
         email=email,

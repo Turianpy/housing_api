@@ -16,17 +16,17 @@ def validate_username(username):
     return True
 
 
-def validate_email_exists(email):
-    if User.objects.filter(email=email).exists():
-        raise ValidationError('Email unavailable')
-    return True
-
-
-def validate_username_exists(username):
-    if User.objects.filter(username=username).exists():
-        raise ValidationError('Username unavailable')
-    return True
-
-
 def validate_email_and_username_exist(email, username):
-    return validate_email_exists(email) and validate_username_exists(username)
+    email = User.objects.filter(email=email).exists()
+    username = User.objects.filter(username=username).exists()
+
+    detail = {}
+    if email:
+        detail['email'] = 'Email unavailable'
+    if username:
+        detail['username'] = 'Username unavailable'
+
+    if email or username:
+        raise ValidationError(detail)
+
+    return not (email or username)
