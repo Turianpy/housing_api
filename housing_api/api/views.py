@@ -139,11 +139,11 @@ class UserViewSet(ModelViewSet):
 
     @action(
             detail=False,
-            methods=['patch', 'get'],
+            methods=['patch', 'post'],
             permission_classes=[permissions.AllowAny]
         )
     def reset_password(self, request):
-        if request.method == 'GET':
+        if request.method == 'POST':
             email = request.data['email']
             if not email:
                 return Response(
