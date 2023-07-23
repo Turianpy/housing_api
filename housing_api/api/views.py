@@ -7,14 +7,14 @@ from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-
 from users.models import User
 
 from .permissions import IsAdmin, IsModerator
-from .serializers import (GetTokenSerializer, SignUpSerializer,
+from .serializers import (ChangePasswordSerializer, GetTokenSerializer,
+                          ResetPasswordSerializer, SignUpSerializer,
                           UserCreateSerializer, UserSerializer)
-from .tasks import send_activation_email_task
-from .utils import generate_activation_token, get_tokens
+from .tasks import send_activation_email_task, send_reset_password_email_task
+from .utils import generate_user_token, get_tokens
 from .validators import validate_email_and_username_exist
 
 
@@ -36,7 +36,7 @@ def singup(request):
     user.set_password(password)
     user.save()
     send_activation_email_task(
-        username, email, generate_activation_token(user)
+        username, email, generate_user_token(user)
     )
     return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -136,3 +136,70 @@ class UserViewSet(ModelViewSet):
             serializer.save()
             return Response(serializer.data)
         return Response(self.get_serializer_class()(request.user).data)
+
+    @action(
+            detail=False,
+            methods=['patch', 'get'],
+            permission_classes=[permissions.AllowAny]
+        )
+    def reset_password(self, request):
+        if request.method == 'GET':
+            email = request.data['email']
+            if not email:
+                return Response(
+                    {'error': 'Email not provided'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            user = get_object_or_404(User, email=email)
+            send_reset_password_email_task(
+                user.username,
+                user.email,
+                generate_user_token(user)
+            )
+            return Response(
+                {'message': 'Reset password link sent'},
+                status=status.HTTP_200_OK
+            )
+        if request.method == 'PATCH':
+            token = request.query_params.get('token')
+            if not token:
+                return Response(
+                    {'error': 'Token not provided'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            data = request.data
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=['HS256']
+            )
+            data["email"] = payload['email']
+            serializer = ResetPasswordSerializer(data=data)
+            serializer.is_valid(raise_exception=True)
+            user = get_object_or_404(User, email=data['email'])
+            user.set_password(serializer.validated_data['new'])
+            user.save()
+            return Response(
+                {'message': 'Password reset successfully'},
+                status=status.HTTP_200_OK
+            )
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @action(
+        methods=['PATCH'],
+        detail=False,
+        permission_classes=[permissions.IsAuthenticated]
+    )
+    def change_password(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        user.set_password(serializer.validated_data['new'])
+        user.save()
+        return Response(
+            {'message': 'Password changed successfully'},
+            status=status.HTTP_200_OK
+        )
