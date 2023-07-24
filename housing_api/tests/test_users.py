@@ -140,3 +140,36 @@ class TestUsers:
         regular_user.refresh_from_db()
         assert not regular_user.check_password(data['new'])
         assert response.data['new'][0] == 'Passwords do not match'
+
+    def test_users_me(self, regular_user_client, regular_user):
+        response = regular_user_client.get(self.users_url + 'me/')
+        assert response.status_code == 200
+        assert response.data['username'] == regular_user.username
+        assert response.data['email'] == regular_user.email
+        assert response.data['first_name'] == regular_user.first_name
+        assert response.data['last_name'] == regular_user.last_name
+
+    def test_users_me_patch(self, regular_user_client, regular_user):
+        data = {
+            'first_name': 'new_first_name',
+        }
+        response = regular_user_client.patch(
+            self.users_url + 'me/',
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        regular_user.refresh_from_db()
+        assert response.data['first_name'] == regular_user.first_name
+
+    def test_users_me_patch_role_forbidden(self, regular_user_client):
+        data = {
+            'role': 'admin',
+        }
+        response = regular_user_client.patch(
+            self.users_url + 'me/',
+            data=json.dumps(data),
+            content_type='application/json'
+        )
+        assert response.status_code == 403
+        assert response.data['error'] == 'You cannot change your role here'

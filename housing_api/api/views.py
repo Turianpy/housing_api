@@ -120,13 +120,17 @@ class UserViewSet(ModelViewSet):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['get', 'patch'])
+    @action(
+        detail=False,
+        methods=['get', 'patch'],
+        permission_classes=[permissions.IsAuthenticated]
+    )
     def me(self, request):
         if request.method == 'PATCH':
             if 'role' in request.data:
                 return Response(
                     {'error': 'You cannot change your role here'},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_403_FORBIDDEN
                 )
             serializer = self.get_serializer_class()(
                 request.user,
