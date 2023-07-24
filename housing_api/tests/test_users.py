@@ -82,7 +82,11 @@ class TestUsers:
         regular_user.refresh_from_db()
         assert regular_user.check_password(data['new'])
 
-    def test_change_password_invalid_old_password(self, regular_user_client, regular_user):
+    def test_change_password_invalid_old_password(
+            self,
+            regular_user_client,
+            regular_user
+    ):
         data = {
             'old': 'test!passwordQSC3',
             'new': 'test!passwordQSC2',
@@ -98,7 +102,11 @@ class TestUsers:
         regular_user.refresh_from_db()
         assert not regular_user.check_password(data['new'])
 
-    def test_change_password_invalid_new_password(self, regular_user_client, regular_user):
+    def test_change_password_invalid_new_password(
+            self,
+            regular_user_client,
+            regular_user
+    ):
         data = {
             'old': 'test!passwordQSC',
             'new': 'test',
