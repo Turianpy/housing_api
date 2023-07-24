@@ -169,11 +169,17 @@ class UserViewSet(ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             data = request.data
-            payload = jwt.decode(
-                token,
-                settings.SECRET_KEY,
-                algorithms=['HS256']
-            )
+            try:
+                payload = jwt.decode(
+                    token,
+                    settings.SECRET_KEY,
+                    algorithms=['HS256']
+                )
+            except jwt.InvalidSignatureError:
+                return Response(
+                    {'error': 'Invalid token'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
             data["email"] = payload['email']
             serializer = ResetPasswordSerializer(data=data)
             serializer.is_valid(raise_exception=True)
