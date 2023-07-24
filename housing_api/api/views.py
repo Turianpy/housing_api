@@ -3,17 +3,18 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
+from properties.models import Property
 from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-
 from users.models import User
 
 from .permissions import IsAdmin, IsModerator
 from .serializers import (ChangePasswordSerializer, GetTokenSerializer,
-                          ResetPasswordSerializer, SignUpSerializer,
-                          UserCreateSerializer, UserSerializer)
+                          PropertySerializer, ResetPasswordSerializer,
+                          SignUpSerializer, UserCreateSerializer,
+                          UserSerializer, PropertyCreateSerializer)
 from .tasks import send_activation_email_task, send_reset_password_email_task
 from .utils import generate_user_token, get_tokens
 from .validators import validate_email_and_username_exist
@@ -214,3 +215,13 @@ class UserViewSet(ModelViewSet):
             {'message': 'Password changed successfully'},
             status=status.HTTP_200_OK
         )
+
+
+class PropertyViewSet(ModelViewSet):
+    permission_classes = [permissions.AllowAny]
+    queryset = Property.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return PropertyCreateSerializer
+        return PropertySerializer

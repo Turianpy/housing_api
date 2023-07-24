@@ -1,10 +1,25 @@
+import base64
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.core.files.base import ContentFile
+from djmoney.contrib.django_rest_framework import MoneyField
+from properties.models import Image, Location, Property, RentDetails
 from rest_framework import serializers
 
 from .validators import validate_username
 
 User = get_user_model()
+
+
+class Base64ImageField(serializers.ImageField):
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith('data:image'):
+            format, imgstr = data.split(';base64,')
+            ext = format.split('/')[-1]
+            data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
+        return super().to_internal_value(data)
 
 
 class ResetPasswordSerializer(serializers.Serializer):
@@ -119,3 +134,53 @@ class UserSerializer(serializers.ModelSerializer):
         )
         model = User
         read_only_fields = ('role',)
+
+
+class ImageSerializer(serializers.ModelSerializer):
+
+    image = Base64ImageField()
+
+    class Meta:
+        fields = ('id', 'image', 'property')
+        model = Image
+
+
+class LocationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        fields = ('__all__')
+        model = Location
+
+
+class RentDetailsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        fields = ('__all__')
+        model = RentDetails
+
+
+class PropertyCreateSerializer(serializers.ModelSerializer):
+    price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
+
+    class Meta:
+        model = Property
+        fields = ('__all__')
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        new_ret = ret.copy()
+        for key in ret:
+            if ret[key] is None:
+                new_ret.pop(key)
+        return new_ret
+
+
+class PropertySerializer(serializers.ModelSerializer):
+    price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
+    images = ImageSerializer(many=True, read_only=True)
+    rent_details = RentDetailsSerializer(read_only=True)
+    location = LocationSerializer(read_only=True)
+
+    class Meta:
+        model = Property
+        fields = ('__all__')
