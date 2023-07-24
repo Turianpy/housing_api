@@ -1,7 +1,7 @@
 import pytest
 from django.core import mail
 
-from api.utils import generate_activation_token
+from api.utils import generate_user_token
 
 from .fixtures.user_fixtures import *  # noqa
 
@@ -81,7 +81,7 @@ class TestAuth:
 
     def test_activation(self, client, regular_user_inactive):
 
-        token = generate_activation_token(regular_user_inactive)
+        token = generate_user_token(regular_user_inactive)
         url = f'{self.activate_url}?token={token}'
         response = client.get(url)
         assert response.status_code == 200
@@ -94,7 +94,7 @@ class TestAuth:
         assert response.data['error'] == 'Invalid token'
 
     def test_activation_already_activated(self, regular_user, client):
-        token = generate_activation_token(regular_user)
+        token = generate_user_token(regular_user)
         url = f'{self.activate_url}?token={token}'
         response = client.get(url)
         assert response.status_code == 400
@@ -102,7 +102,7 @@ class TestAuth:
 
     def test_activation_user_does_not_exist(self, client, user_factory):
         user = user_factory.build()
-        token = generate_activation_token(user)
+        token = generate_user_token(user)
         url = f'{self.activate_url}?token={token}'
         response = client.get(url)
         assert response.status_code == 400

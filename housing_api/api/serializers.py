@@ -7,6 +7,40 @@ from .validators import validate_username
 User = get_user_model()
 
 
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(max_length=254, required=True)
+    new = serializers.CharField(required=True, validators=[validate_password])
+    new_retype = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        if attrs['new'] != attrs['new_retype']:
+            raise serializers.ValidationError(
+                {'new': 'Passwords do not match'}
+            )
+        return attrs
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old = serializers.CharField(required=True)
+    new = serializers.CharField(required=True, validators=[validate_password])
+    new_retype = serializers.CharField(required=True)
+
+    def validate(self, attrs):
+        if attrs['old'] == attrs['new']:
+            raise serializers.ValidationError(
+                {'new': 'New password must be different from old password'}
+            )
+        if not self.context['request'].user.check_password(attrs['old']):
+            raise serializers.ValidationError(
+                {'old': 'Incorrect password'}
+            )
+        if attrs['new'] != attrs['new_retype']:
+            raise serializers.ValidationError(
+                {'new': 'Passwords do not match'}
+            )
+        return attrs
+
+
 class SignUpSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(max_length=254, required=True)
     username = serializers.CharField(

@@ -31,7 +31,29 @@ def send_activation_email(username, email, token):
     return email.send(fail_silently=False)
 
 
-def generate_activation_token(user):
+def send_reset_password_email(username, email, token):
+    reset_link = "http://localhost/api/auth/reset_password/?token=" + token
+    context = {
+        "name": username,
+        "email": email,
+        "reset_link": reset_link
+    }
+
+    email_subject = 'Your website_name reset password link'
+    email_body = render_to_string(
+        'reset_password_link_email.txt',
+        context=context
+    )
+
+    email = EmailMessage(
+        email_subject,
+        email_body,
+        settings.DEFAULT_FROM_EMAIL, [email, ],
+    )
+    return email.send(fail_silently=False)
+
+
+def generate_user_token(user):
     payload = {
         'email': user.email,
         'exp': datetime.utcnow() + timedelta(minutes=60),
