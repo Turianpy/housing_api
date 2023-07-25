@@ -3,18 +3,19 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from properties.models import Property
+from properties.models import Property, RentDetails, Image, Location
 from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.parsers import MultiPartParser, JSONParser
 from users.models import User
 
 from .permissions import IsAdmin, IsModerator
 from .serializers import (ChangePasswordSerializer, GetTokenSerializer,
-                          PropertySerializer, ResetPasswordSerializer,
-                          SignUpSerializer, UserCreateSerializer,
-                          UserSerializer, PropertyCreateSerializer)
+                          PropertyCreateSerializer, PropertySerializer,
+                          ResetPasswordSerializer, SignUpSerializer,
+                          UserCreateSerializer, UserSerializer)
 from .tasks import send_activation_email_task, send_reset_password_email_task
 from .utils import generate_user_token, get_tokens
 from .validators import validate_email_and_username_exist
@@ -216,12 +217,84 @@ class UserViewSet(ModelViewSet):
             status=status.HTTP_200_OK
         )
 
+    @action(
+        methods=['get'],
+        detail=True,
+        permission_classes=[permissions.IsAuthenticated]
+    )
+    def properties(self, request):
+        user = self.get_object()
+        properties = Property.objects.filter(owner=user)
+        serializer = PropertySerializer(properties, many=True)
+        return Response(serializer.data)
+
 
 class PropertyViewSet(ModelViewSet):
     permission_classes = [permissions.AllowAny]
     queryset = Property.objects.all()
+    parser_classes = [MultiPartParser, JSONParser]
 
     def get_serializer_class(self):
         if self.action == 'create':
             return PropertyCreateSerializer
         return PropertySerializer
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [permissions.IsAuthenticated()]
+        return super().get_permissions()
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer_class()(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        image_data = []
+        for k, v in request.data.items():
+            if k.startswith('image'):
+                image_data.append({'image': v})
+        validated_data = serializer.validated_data
+        rent_details_data = validated_data.pop('rent_details', None)
+        location_data = validated_data.pop('location', None)
+        validated_data.pop('images', None)
+
+        prop = Property.objects.create(**validated_data, owner=request.user)
+        if rent_details_data is not None:
+            print('rent_details true')
+            RentDetails.objects.create(property=prop, **rent_details_data)
+        if location_data is not None:
+            print('location true')
+            Location.objects.create(property=prop, **location_data)
+        for image in image_data:
+            Image.objects.create(property=prop, **image)
+        prop.refresh_from_db()
+        return Response(PropertySerializer(prop).data, status=status.HTTP_201_CREATED)
+
+    @action(
+        methods=['get'], detail=False,
+        permission_classes=[permissions.IsAuthenticated]
+    )
+    def favorites(self, request):
+        favorites = request.user.favorites.all()
+        if not favorites:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        serializer = PropertySerializer(favorites, many=True)
+        return Response(serializer.data)
+
+    @action(
+        methods=['post', 'delete'], detail=True,
+        permission_classes=[permissions.IsAuthenticated]
+    )
+    def favorite(self, request, pk):
+        property = self.get_object()
+        if request.method == 'DELETE':
+            request.user.favorites.remove(property)
+            return Response(status=status.HTTP_200_OK)
+        request.user.favorites.add(property)
+        return Response(status=status.HTTP_200_OK)
+
+    @action(
+        methods=['post'], detail=True,
+        permission_classes=[permissions.IsAuthenticated]
+    )
+    def reserve(self, request, pk):
+        pass

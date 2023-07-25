@@ -26,7 +26,6 @@ class Property(models.Model):
     bedrooms = models.IntegerField()
     bathrooms = models.IntegerField()
     for_sale = models.BooleanField(default=True)
-    for_rent = models.BooleanField(default=False)
     owner = models.ForeignKey(
         'users.User',
         related_name='properties',
@@ -72,7 +71,7 @@ class RentDetails(models.Model):
         ('paid by tenant', 'Paid by tenant'),
     )
 
-    property = models.ForeignKey(
+    property = models.OneToOneField(
         Property,
         related_name='rent_details',
         on_delete=models.CASCADE
@@ -82,7 +81,6 @@ class RentDetails(models.Model):
         decimal_places=2,
         default_currency='USD'
         )
-    for_rent = models.BooleanField(default=False)
     min_rent_time = models.IntegerField(blank=True, null=True)
     available_from = models.DateField(blank=True, null=True)
     available_to = models.DateField(blank=True, null=True)
@@ -91,11 +89,10 @@ class RentDetails(models.Model):
         choices=UTILITY_OPTIONS,
         default='paid by tenant'
     )
-    deposit_amount = models.DecimalField(
+    deposit_amount = MoneyField(
         max_digits=10,
         decimal_places=2,
-        blank=True,
-        null=True
+        default_currency='USD'
     )
 
 
@@ -110,5 +107,3 @@ class Location(models.Model):
     state = models.CharField(max_length=255)
     zipcode = models.IntegerField()
     country = models.CharField(max_length=255)
-    latitude = models.DecimalField(max_digits=9, decimal_places=6)
-    longitude = models.DecimalField(max_digits=9, decimal_places=6)

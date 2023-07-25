@@ -148,23 +148,27 @@ class ImageSerializer(serializers.ModelSerializer):
 class LocationSerializer(serializers.ModelSerializer):
 
     class Meta:
-        fields = ('__all__')
+        exclude = ('property',)
         model = Location
 
 
 class RentDetailsSerializer(serializers.ModelSerializer):
+    rent_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
+    deposit_amount = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
 
     class Meta:
-        fields = ('__all__')
+        exclude = ('property',)
         model = RentDetails
 
 
 class PropertyCreateSerializer(serializers.ModelSerializer):
     price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
+    rent_details = RentDetailsSerializer(required=False)
+    location = LocationSerializer(required=False)
 
     class Meta:
         model = Property
-        fields = ('__all__')
+        exclude = ('owner', 'id')
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -178,9 +182,20 @@ class PropertyCreateSerializer(serializers.ModelSerializer):
 class PropertySerializer(serializers.ModelSerializer):
     price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
     images = ImageSerializer(many=True, read_only=True)
-    rent_details = RentDetailsSerializer(read_only=True)
+    rent_details = serializers.SerializerMethodField()
     location = LocationSerializer(read_only=True)
+    for_rent = serializers.SerializerMethodField()
+    owner = serializers.SlugRelatedField(slug_field='username', read_only=True)
 
     class Meta:
         model = Property
         fields = ('__all__')
+
+    def get_rent_details(self, obj):
+        try:
+            return RentDetailsSerializer(obj.rent_details).data
+        except RentDetails.DoesNotExist:
+            return None
+
+    def get_for_rent(self, obj):
+        return self.get_rent_details(obj) is not None

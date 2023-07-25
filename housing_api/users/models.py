@@ -31,6 +31,11 @@ class User(AbstractUser):
         validators=[],
         max_length=20,
     )
+    favorites = models.ManyToManyField(
+        'properties.Property',
+        related_name='favorited_by',
+        blank=True
+    )
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']
