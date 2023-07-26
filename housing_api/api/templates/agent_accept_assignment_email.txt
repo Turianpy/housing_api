@@ -1,0 +1,5 @@
+Hello {{ name|safe }}!
+
+The agent {{ agent }} has accepted your request to take the property titled {{ property }} into management.
+
+Have a good day

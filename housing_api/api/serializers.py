@@ -6,6 +6,7 @@ from django.core.files.base import ContentFile
 from djmoney.contrib.django_rest_framework import MoneyField
 from properties.models import Image, Location, Property, RentDetails
 from rest_framework import serializers
+from rest_framework.validators import UniqueTogetherValidator
 
 from .validators import validate_username
 
@@ -124,16 +125,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
-        fields = (
-            'id',
-            'username',
-            'first_name',
-            'last_name',
-            'email',
-            'phone_number',
-        )
+        fields = ('__all__')
         model = User
-        read_only_fields = ('role',)
 
 
 class ImageSerializer(serializers.ModelSerializer):
@@ -153,8 +146,14 @@ class LocationSerializer(serializers.ModelSerializer):
 
 
 class RentDetailsSerializer(serializers.ModelSerializer):
-    rent_price = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
-    deposit_amount = MoneyField(max_digits=14, decimal_places=2, default_currency='USD')
+    rent_price = MoneyField(
+        max_digits=14, decimal_places=2,
+        default_currency='USD'
+    )
+    deposit_amount = MoneyField(
+        max_digits=14, decimal_places=2,
+        default_currency='USD'
+    )
 
     class Meta:
         exclude = ('property',)

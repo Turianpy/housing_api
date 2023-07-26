@@ -3,20 +3,24 @@ from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from properties.models import Property, RentDetails, Image, Location
+from properties.models import Image, Location, Property, RentDetails
 from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.parsers import JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.parsers import MultiPartParser, JSONParser
 from users.models import User
 
-from .permissions import IsAdmin, IsModerator
+from .permissions import IsAdmin, IsAgent, IsModerator, IsPropertyOwner
 from .serializers import (ChangePasswordSerializer, GetTokenSerializer,
                           PropertyCreateSerializer, PropertySerializer,
                           ResetPasswordSerializer, SignUpSerializer,
                           UserCreateSerializer, UserSerializer)
-from .tasks import send_activation_email_task, send_reset_password_email_task
+from .tasks import (send_activation_email_task,
+                    send_agent_accept_assginment_email_task,
+                    send_agent_assignment_email_task,
+                    send_agent_decline_assginment_email_task,
+                    send_reset_password_email_task)
 from .utils import generate_user_token, get_tokens
 from .validators import validate_email_and_username_exist
 
@@ -267,7 +271,10 @@ class PropertyViewSet(ModelViewSet):
         for image in image_data:
             Image.objects.create(property=prop, **image)
         prop.refresh_from_db()
-        return Response(PropertySerializer(prop).data, status=status.HTTP_201_CREATED)
+        return Response(
+            PropertySerializer(prop).data,
+            status=status.HTTP_201_CREATED
+        )
 
     @action(
         methods=['get'], detail=False,
@@ -293,8 +300,28 @@ class PropertyViewSet(ModelViewSet):
         return Response(status=status.HTTP_200_OK)
 
     @action(
-        methods=['post'], detail=True,
-        permission_classes=[permissions.IsAuthenticated]
+        methods=['post', 'delete'], detail=True,
+        permission_classes=[IsPropertyOwner]
     )
-    def reserve(self, request, pk):
-        pass
+    def assign_agent(self, request, pk):
+        property = self.get_object()
+        agent = get_object_or_404(User, email=request.data['email'])
+        if request.method == 'POST':
+            send_agent_assignment_email_task(request.user, agent, property)
+            return Response(status=status.HTTP_200_OK)
+        property.agents.remove(agent)
+        return Response(status=status.HTTP_200_OK)
+
+    @action(
+        methods=['get', 'post'], detail=True, permission_classes=[IsAgent]
+    )
+    def agent_confirm(self, request, pk):
+        property = self.get_object()
+        if request.method == 'GET':
+            return Response(PropertySerializer(property).data)
+        if request.data['confirm']:
+            send_agent_accept_assginment_email_task(property.owner, property, request.user)
+            property.agents.add(request.user)
+            return Response(status=status.HTTP_200_OK)
+        send_agent_decline_assginment_email_task(property.owner, property, request.user)
+        return Response(status=status.HTTP_200_OK) 

@@ -1,0 +1,3 @@
+Hello {{ name|safe }}!
+
+The agent {{ agent }} has declined your request to take the property titled {{ property }} into management.

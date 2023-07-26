@@ -22,7 +22,7 @@ class Property(models.Model):
     listed = models.BooleanField(default=False)
     title = models.CharField(max_length=255)
     price = MoneyField(max_digits=10, decimal_places=2, default_currency='USD')
-    description = models.TextField()
+    description = models.TextField(unique=True)
     bedrooms = models.IntegerField()
     bathrooms = models.IntegerField()
     for_sale = models.BooleanField(default=True)
@@ -31,11 +31,10 @@ class Property(models.Model):
         related_name='properties',
         on_delete=models.CASCADE
     )
-    agent = models.ForeignKey(
+    agents = models.ManyToManyField(
         'users.User',
         related_name='properties_as_agent',
-        on_delete=models.CASCADE,
-        null=True
+        blank=True
     )
     built = models.DateField()
     created = models.DateTimeField(auto_now_add=True)
@@ -54,6 +53,9 @@ class Property(models.Model):
     total_floors = models.IntegerField(blank=True, null=True)
     floor_number = models.IntegerField(blank=True, null=True)
 
+    class Meta:
+        unique_together = ('title', 'owner')
+
 
 class Image(models.Model):
     image = models.ImageField(upload_to='images/')
@@ -62,7 +64,6 @@ class Image(models.Model):
         related_name='images',
         on_delete=models.CASCADE
     )
-    main = models.BooleanField(default=False)
 
 
 class RentDetails(models.Model):
@@ -107,3 +108,6 @@ class Location(models.Model):
     state = models.CharField(max_length=255)
     zipcode = models.IntegerField()
     country = models.CharField(max_length=255)
+
+    class Meta:
+        unique_together = ('address', 'city', 'state', 'zipcode', 'country')

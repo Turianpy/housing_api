@@ -1,0 +1,6 @@
+Hello {{ name|safe }}!
+
+The owner of this property, {{ owner|safe }} has asked you to take it into management.
+Click the link below to review the property and accept or decline the request.
+
+{{ link }}
